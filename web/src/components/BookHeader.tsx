@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { coverUrl } from '@/api';
-import { languageLabel } from '@/format';
-import type { BookInfo } from '@/types';
+import { coverUrl } from '@/apiClient';
+import { languageLabel } from '@/formatText';
+import type { BookInfo } from '@/apiTypes';
 import styles from './BookHeader.module.css';
 
 /**

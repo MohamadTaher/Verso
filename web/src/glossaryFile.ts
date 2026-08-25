@@ -1,4 +1,4 @@
-import type { Glossary } from '@/types';
+import type { Glossary } from '@/apiTypes';
 
 /**
  * Bringing in a glossary from somewhere else — the file the CLI writes, or one

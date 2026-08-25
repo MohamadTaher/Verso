@@ -1,8 +1,8 @@
 import { useId, useRef, useState } from 'react';
-import { DEFAULT_MAX_UPLOAD_MB } from '@/constants';
-import { fileSize, languageLabel } from '@/format';
-import { describeBlock } from '@/notices';
-import type { Status, UploadSettings } from '@/types';
+import { DEFAULT_MAX_UPLOAD_MB } from '@/uiConstants';
+import { fileSize, languageLabel } from '@/formatText';
+import { describeBlock } from '@/noticeMessages';
+import type { Status, UploadSettings } from '@/apiTypes';
 import { Button, Callout, NoticeCallout, SparklesIcon } from './ui';
 import styles from './UploadPanel.module.css';
 

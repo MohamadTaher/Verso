@@ -1,6 +1,19 @@
-# EPUB Translate
+# Verso
 
-Translates EPUB books using Google's Gemini API. Preserves HTML structure, groups chapters into token-limited patches, and uses a glossary to keep term translations consistent across the book.
+Translates EPUB books with Google's Gemini API, keeping names and terminology
+consistent from the first chapter to the last.
+
+That consistency is the hard part. A book is far too large to translate in one
+request, so it goes out in patches of a few chapters — and the model has no memory
+of what it called a character thirty chapters ago. So every reply carries a second
+payload: a glossary of the terms that patch met. Those merge into a running glossary
+and travel back out with later requests whose chapters mention them, which is the
+only thing keeping a name steady across a forty-chapter novel.
+
+The rest follows from doing that carefully: HTML structure is preserved tag for tag,
+replies are validated against the expected chapter count before they are accepted,
+and the book is re-saved after every patch so a partial translation is always a
+valid EPUB.
 
 Runs two ways: a CLI, and a web app you can deploy.
 
@@ -18,9 +31,10 @@ Get a key at <https://aistudio.google.com/apikey>. A key is a secret and it neve
 changes while the process runs, so it is read once at startup. Both the CLI and the
 server read this same file. It is gitignored and never copied into the Docker image.
 
-**`settings.env` — everything else, live.** Copy `settings.env.example` to
-`settings.env`. The model, the pace, the spend ceilings and the upload limit all live
-here, and **the file is re-read whenever it changes** — no restart, and no rebuild:
+**`settings.env` — everything else, live.** This one is in the repo already, with
+every setting commented and set to a working value. The model, the pace, the spend
+ceilings and the upload limit all live here, and **the file is re-read whenever it
+changes** — no restart, and no rebuild:
 
 ```
 GEMINI_MODEL=gemini-3.5-flash-lite
@@ -58,7 +72,7 @@ image.
 the dev server does not read it:
 
 ```
-docker compose restart epub-translate
+docker compose restart verso
 ```
 
 ## Web app
@@ -122,7 +136,7 @@ The rest is set once on the service. These are properties of the service rather 
 Only two values are set on the service itself:
 
 - **`GEMINI_API_KEY`**, referenced from Secret Manager rather than typed as a plain variable. It is the one value here that is a secret, and `.env` never enters the image.
-- **`DATA_DIR=/tmp/epub_translate`** as a plain environment variable, `/tmp` being the path guaranteed writable on any instance. The image points `DATA_DIR` at `/data` instead, which is where compose mounts its volume.
+- **`DATA_DIR=/tmp/verso`** as a plain environment variable, `/tmp` being the path guaranteed writable on any instance. The image points `DATA_DIR` at `/data` instead, which is where compose mounts its volume.
 
 Everything else travels in the image. `settings.env` is committed and copied in, so the deployed model, pace and spend ceilings are whatever that file said when the image was built. Setting any of *those* names as an environment variable on the service does nothing — the file wins over the environment, by design.
 
@@ -198,7 +212,7 @@ cd web && npm install && npm run dev
 
 ```
 pip install -r requirements.txt
-python translate_epub.py book.epub
+python translate.py book.epub
 ```
 
 Reads the key from the same `.env`. To use an environment variable instead:
@@ -223,7 +237,7 @@ Common options:
 
 The last four default to the same `.env` settings the server is paced by, so a
 book runs at one speed however it is started; passing the flag overrides it.
-Run `python translate_epub.py --help` for the full list, which prints the
+Run `python translate.py --help` for the full list, which prints the
 defaults your `.env` currently resolves to.
 
 ## How it works
@@ -283,30 +297,33 @@ file, which is how a series carries its names from one book to the next.
 ## Project layout
 
 ```
-translate_epub.py    CLI entry point (python translate_epub.py ...)
-epub_translate/
-  cli.py             argument parsing
-  defaults.py        pacing settings and the API key, shared with the server
-  translator.py      wiring a run together, pacing it, and saving as it goes
-  plan.py            what a run would involve, before anything is spent
-  worker.py          one patch, from prompt to translated chapters
-  run_state.py       the counters every worker shares
-  gemini.py          sending a request, and reading what comes back
-  packing.py         grouping chapters into patches, by token budget
-  book/              reading an EPUB, its chapters, and writing the translation
-  glossary/          the glossary, and the terms each response teaches it
-  prompts.py         the prompt sent for one patch
-  rate_limiter.py    API rate limiting
-  console.py         colored terminal output, and the one prompt the CLI asks
-  tokens.py          token counting
+translate.py            CLI entry point (python translate.py ...)
+verso/
+  cli.py                argument parsing
+  translator.py         wiring a run together, pacing it, and saving as it goes
+  translation_plan.py   what a run would involve, before anything is spent
+  patch_worker.py       one patch, from prompt to translated chapters
+  patch_packing.py      grouping chapters into patches, by token budget
+  run_state.py          the counters every worker shares
+  gemini.py             sending a request, and reading what comes back
+  language_detection.py language codes, and what counts as already translated
+  token_counting.py     token counting
+  prompts.py            the prompt sent for one patch
+  rate_limiter.py       API rate limiting
+  console.py            colored terminal output, and the one prompt the CLI asks
+  settings/             the API key, and the settings shared with the server
+  book/                 reading an EPUB, its chapters, and writing the translation
+  glossary/             the glossary, and the terms each response teaches it
 server/
-  app.py             HTTP endpoints and static file serving
-  jobs.py            background translation jobs and progress fan-out
-  budget.py          daily spend ceiling
-  config.py          settings, all environment-overridable
-web/                 React + Vite frontend, builds to web/dist
-  src/App.tsx        upload -> plan -> run
-  src/useJobStream.ts  progress event stream
-  src/styles/        design tokens
-  src/components/
+  app.py                HTTP endpoints and static file serving
+  jobs.py               background translation jobs and progress fan-out
+  budget.py             daily spend ceiling
+  settings.py           the server's own limits, and the pacing ones forwarded
+web/                    React + Vite frontend, builds to web/dist
+  src/App.tsx           upload -> plan -> run
+  src/apiClient.ts      every call the browser makes
+  src/hooks/            job stream, server status, resume, preview, glossary
+  src/components/       one panel each, and ui/ for what they share
+  src/styles/           design tokens
+testing/                integration suites — see testing/README.md
 ```

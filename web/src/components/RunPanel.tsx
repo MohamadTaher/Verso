@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { downloadUrl } from '@/api';
-import { STALL_SECONDS } from '@/constants';
-import { duration, estimateSeconds } from '@/format';
-import { describeOutcome } from '@/notices';
-import type { JobSnapshot } from '@/types';
-import type { GlossaryState } from '@/useGlossary';
-import type { StreamState } from '@/useJobStream';
+import { downloadUrl } from '@/apiClient';
+import { STALL_SECONDS } from '@/uiConstants';
+import { duration, estimateSeconds } from '@/formatText';
+import { describeOutcome } from '@/noticeMessages';
+import type { JobSnapshot } from '@/apiTypes';
+import type { GlossaryState } from '@/hooks/useGlossary';
+import type { StreamState } from '@/hooks/useJobStream';
 import { ActivityLog } from './ActivityLog';
 import { BookHeader } from './BookHeader';
 import { ChapterList } from './ChapterList';

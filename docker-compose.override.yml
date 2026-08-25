@@ -13,9 +13,9 @@
 #   docker compose -f docker-compose.yml up --build
 #
 services:
-  epub-translate:
+  verso:
     # The dev server is what the browser talks to, so it takes the published
-    # port and this one is reached at `epub-translate:7860` inside the network.
+    # port and this one is reached at `verso:7860` inside the network.
     # `!reset` because compose otherwise *appends* to the base file's ports, and
     # two services cannot publish 7860 at once.
     ports: !reset []
@@ -23,7 +23,7 @@ services:
       # The working tree, over the copy baked into the image. `.env` is still
       # mounted read-only by the base file; a nested mount wins over this one.
       - .:/app
-    command: uvicorn server.app:app --host 0.0.0.0 --port 7860 --reload --reload-dir /app/epub_translate --reload-dir /app/server
+    command: uvicorn server.app:app --host 0.0.0.0 --port 7860 --reload --reload-dir /app/verso --reload-dir /app/server
 
   web:
     image: node:20-alpine
@@ -38,7 +38,7 @@ services:
       # to Vite would be pointed at a port nothing is listening on.
       - "7860:7860"
     environment:
-      - API_TARGET=http://epub-translate:7860
+      - API_TARGET=http://verso:7860
       # File events don't cross a Windows bind mount; see web/vite.config.ts.
       - VITE_POLL=1
     command: sh -c "npm install && npm run dev -- --host --port 7860 --strictPort"

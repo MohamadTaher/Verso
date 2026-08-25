@@ -22,7 +22,7 @@ from harness import ROOT, Api, Report, RESULTS_DIR, opf_metadata
 # Python puts this folder on the path, not the project above it, and only this
 # suite needs the app itself rather than the server in front of it.
 sys.path.insert(0, str(ROOT))
-from epub_translate.book import EpubWriter, SourceBook  # noqa: E402
+from verso.book import EpubWriter, SourceBook  # noqa: E402
 
 
 def _round_trip(source_path, target_language: str = "English", saves: int = 1) -> Path:

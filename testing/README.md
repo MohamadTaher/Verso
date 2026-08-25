@@ -4,8 +4,8 @@ Three suites that use the app the way a reader does: upload a book, look at what
 it would cost, translate it, watch it happen, and open what comes out.
 
 ```
-docker compose exec -T epub-translate python /app/testing/run_all.py
-docker compose exec -T epub-translate python /app/testing/run_all.py --only api
+docker compose exec -T verso python /app/testing/run_all.py
+docker compose exec -T verso python /app/testing/run_all.py --only api
 ```
 
 Run it inside the container — Python and the dependencies are there, and
@@ -19,15 +19,22 @@ Run it inside the container — Python and the dependencies are there, and
 
 ## The files
 
-- `fixtures.py` — the books, built rather than committed. `zh_small` is the
+- `sample_books.py` — the books, built rather than committed. `zh_small` is the
   workhorse: three short Chinese chapters, a cover page with no text in it, and
   names that recur so the glossary has something to learn. `zh_mixed` is half
   already in English, `zh_plain` has no navigation and no metadata at all,
   `styled` is laid out like a book from a shop (stylesheet, image, chapters in
   their own directory), `zh_long` is long enough to cancel, and `padded` is only
-  large. Run it on its own to rebuild them: `python testing/fixtures.py`.
-- `harness.py` — the API client, the `settings.env` override, the EPUB
-  inspections, and the tally that prints the report.
+  large. Run it on its own to rebuild them: `python testing/sample_books.py`.
+- `harness/` — what the suites are built out of, one module per job. Everything
+  is re-exported from `harness/__init__.py`, so a suite writes `from harness
+  import Api, Report, settings` without knowing which module a helper came from.
+  - `api_client.py` — `Api`: the endpoints, called the way the browser calls them.
+  - `settings_override.py` — `settings(...)`: retune `settings.env` for a block.
+  - `epub_inspection.py` — opening a finished book and reading what is in it.
+  - `expected_packing.py` — the packing rule restated, to check counts against.
+  - `paths.py` — the repo, `settings.env`, and where reports are written.
+  - `report.py` — the tally, and what it prints at the end.
 - `test_api.py`, `test_writer.py`, `test_translation.py` — the suites.
 - `run_all.py` — runs them, writes `results/<timestamp>-<suite>.json`, and says
   how many requests the run spent.
@@ -45,8 +52,9 @@ request — which is itself one of the things being tested.
 back a book still in Chinese is the failure worth catching, so nothing is
 believed on the strength of the server's own account of it: the EPUB is opened
 as a plain zip, its text is counted character by character against the Unicode
-ranges restated in `harness.py`, and its package document is read with a regex.
-None of that goes through `epub_translate`, which would otherwise be agreeing
+ranges restated in `harness/epub_inspection.py`, and its package document is read
+with a regex.
+None of that goes through `verso`, which would otherwise be agreeing
 with itself.
 
 **One override wraps the whole run.** Every upload leaves a job that counts as

@@ -1,8 +1,8 @@
 import { Fragment } from 'react';
-import { MAX_ATTEMPTS } from '@/constants';
-import { tokens as formatTokens } from '@/format';
-import type { Chapter, PatchProgress, PatchState } from '@/types';
-import { useChapterGroups } from '@/useChapterGroups';
+import { MAX_ATTEMPTS } from '@/uiConstants';
+import { tokens as formatTokens } from '@/formatText';
+import type { Chapter, PatchProgress, PatchState } from '@/apiTypes';
+import { useChapterGroups } from '@/hooks/useChapterGroups';
 import styles from './ChapterList.module.css';
 
 /**

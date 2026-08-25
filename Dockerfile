@@ -20,14 +20,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # character count that skews every estimate.
 RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
-COPY epub_translate/ ./epub_translate/
+COPY verso/ ./verso/
 COPY server/ ./server/
-COPY translate_epub.py .
+COPY translate.py .
 COPY --from=web /web/dist ./web/dist
 
 # Configuration rather than a secret — the key lives in `.env`, which never
 # enters the image. Copied last so editing a setting rebuilds only this layer,
-# and left where `settings_file.py` looks for it, next to the application.
+# and left where `settings/env_file.py` looks for it, next to the application.
 COPY settings.env .
 
 # Uploads and the budget database.

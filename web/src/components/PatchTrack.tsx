@@ -1,4 +1,4 @@
-import type { PatchProgress, PatchState } from '@/types';
+import type { PatchProgress, PatchState } from '@/apiTypes';
 import styles from './PatchTrack.module.css';
 
 /**

@@ -1,4 +1,4 @@
-import type { Status } from '@/types';
+import type { Status } from '@/apiTypes';
 import styles from './AppHeader.module.css';
 
 export function AppHeader({ status }: { status: Status | null }) {
@@ -14,9 +14,7 @@ export function AppHeader({ status }: { status: Status | null }) {
               ❦
             </span>
           </div>
-          <span className={styles.wordmark}>
-            <strong>EPUB</strong> Translate
-          </span>
+          <span className={styles.wordmark}>Verso</span>
         </div>
 
         {status && (

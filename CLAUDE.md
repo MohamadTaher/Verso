@@ -1,7 +1,7 @@
-# EPUB Translate
+# Verso
 
-Gemini-powered EPUB translator. A CLI (`translate_epub.py`) and a FastAPI backend
-(`server/`) share the translation core in `epub_translate/`.
+Gemini-powered EPUB translator. A CLI (`translate.py`) and a FastAPI backend
+(`server/`) share the translation core in `verso/`.
 
 `docker compose up` serves the app on [localhost:7860](http://localhost:7860).
 
@@ -25,12 +25,12 @@ Node 20 is the ceiling (`Dockerfile`), so don't pin tooling that wants Node 22.
 and runs uvicorn with `--reload`, so Python edits restart the server on their own.
 
 In development that published port is the **`web` service**, a Vite dev server which
-forwards `/api` to `epub-translate:7860` over the compose network — so a frontend edit
+forwards `/api` to `verso:7860` over the compose network — so a frontend edit
 needs no `npm run build`: the open page updates itself, and a refresh always works.
 Deployed, the same port is uvicorn serving the `web/dist` the Dockerfile built. Two
 things hold that together and both look removable:
 
-- `ports: !reset []` on `epub-translate` in the override. Compose *appends* `ports`
+- `ports: !reset []` on `verso` in the override. Compose *appends* `ports`
   when merging, so without it both services try to publish 7860 and neither starts.
 - Vite is published `7860:7860`, the same number inside and out, because the page
   opens a hot-reload socket back to the port it was served from.
@@ -50,26 +50,33 @@ something still looks fine locally. Check with
 
 `.env` holds `GEMINI_API_KEY` and nothing else. `settings.env` holds everything a
 running server might want retuned — model, pace, spend ceilings, upload limits — and
-`epub_translate/settings_file.py` re-reads it whenever its mtime or size moves.
+`verso/settings/env_file.py` re-reads it whenever its mtime or size moves.
 
-**Settings are not constants any more.** `defaults.py` and `server/config.py` both
-serve theirs from a module-level `__getattr__` (PEP 562), so `config.TOKENS_PER_REQUEST`
-still reads like an attribute at every call site but is evaluated *then*. Two things
-follow, and both fail silently:
+**Settings are not constants any more.** `settings/pacing.py` and `server/settings.py`
+both serve theirs from a module-level `__getattr__` (PEP 562), so
+`settings.TOKENS_PER_REQUEST` still reads like an attribute at every call site but is
+evaluated *then*. Two things follow, and both fail silently:
 
-- **Read late.** `x = config.MAX_UPLOAD_MB` at module scope freezes the value at
+- **Read late.** `x = settings.MAX_UPLOAD_MB` at module scope freezes the value at
   import and quietly opts that setting out of being live. Read it where it is used.
 - **Never assign one of those names** in either module. A real attribute shadows
   `__getattr__`, so the setting keeps working — frozen — with nothing to show for it.
 
-`defaults.py` still owns the four pacing settings and their defaults, and is still the
-only module that calls `load_dotenv`; `settings_file.py` knows about the file, not
-about which settings exist. `server/config.py` names its own limits and forwards the
-pacing ones. `cli.py` uses them as argparse defaults, which is a read at import — fine
-there, because the process is over in one run.
+The `verso/settings/` package is split by *when a value is read*, which is the only
+distinction that matters here:
+
+- `settings/__init__.py` is the read-once half. It calls `load_dotenv` — the only
+  place that does — and holds `GEMINI_API_KEY` and `PROJECT_ROOT` as real constants.
+- `settings/pacing.py` is the live half: the four settings the CLI and the server
+  share, and their built-in defaults.
+- `settings/env_file.py` knows about the file, not about which settings exist.
+
+`server/settings.py` names its own limits and forwards the pacing ones. `cli.py` uses
+them as argparse defaults, which is a read at import — fine there, because the process
+is over in one run.
 
 Don't reach for `os.environ["GEMINI_API_KEY"]` directly: it is only populated once
-`defaults` has been imported, so that works by import order rather than by design.
+`verso.settings` has been imported, so that works by import order rather than by design.
 
 Precedence is `settings.env` → environment → built-in default, which is the reverse of
 `.env`. The file has to win or editing it would do nothing whenever a stale copy of the
@@ -87,8 +94,8 @@ pool. Requests take tens of seconds, so a larger pool would only park threads in
 the limiter.
 
 `gemini-3.1-pro` has a **zero** free-tier quota — a key without billing 429s on every
-request. `gemini-3.5-flash-lite` is the default in `defaults.py` and what
-`settings.env.example` ships, so a free-tier key works untouched; don't "upgrade" it
+request. `gemini-3.5-flash-lite` is the default in `settings/pacing.py` and what
+`settings.env` ships with, so a free-tier key works untouched; don't "upgrade" it
 casually.
 
 A refused request backs off *every* worker (`RateLimiter.back_off`, driven by
@@ -157,7 +164,7 @@ the tokens are structured so a dark one is a second block rather than a rewrite.
 - **`EventSource` must be closed in the `end` handler.** The server closes the stream
   when a job finishes, EventSource reconnects on close, and the job is terminal by
   then — it would replay the whole log and send `end` again, forever. See
-  `web/src/useJobStream.ts`.
+  `web/src/hooks/useJobStream.ts`.
 - **A group of chapters is a "patch", on both sides and on screen.** Identifiers,
   event names (`patch_start`, `patch_done`, …), `stats.chapters[].patch`, the log
   lines, `Patch 3 of 6` in the chapter list — all the same word. `ActivityLog.tsx`
@@ -170,8 +177,14 @@ the tokens are structured so a dark one is a second block rather than a rewrite.
   `server/` (FastAPI's `Request`), which is why it can't name the unit of work.
   "Batch" is a third word for the same thing; don't.
 - Build output must land in `web/dist` — the Dockerfile copies it and `STATIC_DIR`
-  points there. `server/app.py` mounts it only `if config.STATIC_DIR.exists()`,
+  points there. `server/app.py` mounts it only `if settings.STATIC_DIR.exists()`,
   evaluated at import, so a build has to precede the server starting.
+- **`web/src/` is grouped by what a file is**: `hooks/` for the `use*` hooks,
+  `components/` for one panel each, and `components/ui/` for the building blocks the
+  panels share — one file per thing, re-exported from `ui/index.ts`, so a panel
+  still writes `from './ui'`. Everything else at `src/` root is a plain module
+  named for its job: `apiClient`, `apiTypes`, `formatText`, `noticeMessages`,
+  `uiConstants`, `glossaryFile`.
 
 ## API surface
 
@@ -252,7 +265,7 @@ ever sees one patch, so this is the only thing keeping a character's name steady
 chapter 1 to chapter 40.
 
 - **The marker and its parser are one contract**, so they live in one file
-  (`glossary/protocol.py`). Changing the marker in one place alone loses every learned
+  (`glossary/model_protocol.py`). Changing the marker in one place alone loses every learned
   term without failing anything. `CHAPTER_SEPARATOR`, the instruction to preserve it
   and `split_chapters` are in `prompts.py` for the same reason: the string asked for
   and what counts as it coming back must move together, or a patch silently collapses
@@ -262,7 +275,7 @@ chapter 1 to chapter 40.
 - **First translation wins.** A settled term keeps its translation however the model
   renders it later; only a blank one gets filled in. `PUT /glossary` replaces
   everything, learned terms included, because that list is the reader's decision — so
-  `web/src/useGlossary.ts` re-reads the server's copy in `persist` and carries over
+  `web/src/hooks/useGlossary.ts` re-reads the server’s copy in `persist` and carries over
   terms it has never seen. Deleting still works: a term the reader removed was in the
   list they were shown.
 
@@ -303,44 +316,55 @@ Nothing checks the budget mid-run, so that ceiling is enforced only at job start
 ## Layout
 
 ```
-translate_epub.py    CLI entry point
-epub_translate/      translation core, shared by CLI and server
-  cli.py             argument parsing
-  defaults.py        the pacing settings, and the API key read from .env once
-  settings_file.py   settings.env, re-read whenever it changes
-  translator.py      wiring a run together, pacing it, and saving as it goes
-  plan.py            what a run would involve, worked out before anything is spent
-  worker.py          one patch: its prompt, its reply, and what becomes of it
-  run_state.py       the counters every worker shares, and the rule for giving up
-  gemini.py          sending a request, and judging whether a failure is worth retrying
-  packing.py         grouping chapters into patches, by token budget
-  language.py        language codes, and script detection on plain text
+translate.py            CLI entry point
+verso/                  translation core, shared by CLI and server
+  cli.py                argument parsing
+  translator.py         wiring a run together, pacing it, and saving as it goes
+  translation_plan.py   what a run would involve, worked out before anything is spent
+  patch_worker.py       one patch: its prompt, its reply, and what becomes of it
+  patch_packing.py      grouping chapters into patches, by token budget
+  run_state.py          the counters every worker shares, and the rule for giving up
+  gemini.py             sending a request, and judging whether a failure is worth retrying
+  language_detection.py language codes, and script detection on plain text
+  settings/
+    __init__.py         the API key, read once from .env at import
+    pacing.py           model and pace, live, shared with the server
+    env_file.py         settings.env, re-read whenever it changes
   book/
-    chapter.py       the Chapter dataclass, mutated in place as it is translated
-    reader.py        SourceBook: one parse of the archive, chapters and metadata
-    writer.py        EpubWriter, working on the SourceBook's parsed book
+    chapter.py          the Chapter dataclass, mutated in place as it is translated
+    reader.py           SourceBook: one parse of the archive, chapters and metadata
+    writer.py           EpubWriter, working on the SourceBook's parsed book
   glossary/
-    terms.py         the Glossary itself: what is known, and how it grows
-    protocol.py      what the model is asked for, and the parser for its reply
-    matching.py      which terms are worth sending with a given patch
-    storage.py       the file on disk, and the one definition of its format
-  prompts.py         the prompt, CHAPTER_SEPARATOR, and the split that reads it back
-  rate_limiter.py    per-minute windows; a slot is reserved, not checked for
-  tokens.py          token counting (cl100k_base, approximate for Gemini)
-  console.py         colored terminal output, and the CLI's one question
+    terms.py            the Glossary itself: what is known, and how it grows
+    model_protocol.py   what the model is asked for, and the parser for its reply
+    relevance.py        which terms are worth sending with a given patch
+    storage.py          the file on disk, and the one definition of its format
+  prompts.py            the prompt, CHAPTER_SEPARATOR, and the split that reads it back
+  rate_limiter.py       per-minute windows; a slot is reserved, not checked for
+  token_counting.py     token counting (cl100k_base, approximate for Gemini)
+  console.py            colored terminal output, and the CLI's one question
 server/
-  app.py             HTTP endpoints and static file serving
-  jobs.py            background runs, progress fan-out, selection preview
-  budget.py          daily spend ceiling
-  config.py          settings, all environment-overridable
-web/                 React + Vite frontend, builds to web/dist
+  app.py                HTTP endpoints and static file serving (the uvicorn target)
+  jobs.py               background runs, progress fan-out, selection preview
+  budget.py             daily spend ceiling
+  settings.py           the server's own limits, plus the pacing ones forwarded
+web/                    React + Vite frontend, builds to web/dist
   src/
-    App.tsx          phase machine: upload -> plan -> run
-    api.ts           fetch wrappers; ApiError carries the HTTP status
-    use*.ts          hooks: job stream, server status, resume, preview, glossary
-    format.ts        number and duration wording
-    styles/          design tokens and element defaults
-    components/      one flat component + CSS Module each
+    App.tsx             phase machine: upload -> plan -> run
+    apiClient.ts        fetch wrappers; ApiError carries the HTTP status
+    apiTypes.ts         the shapes the server sends and takes
+    formatText.ts       number and duration wording
+    noticeMessages.ts   what to say about a blocked server or a finished run
+    uiConstants.ts      numbers spelled out twice, or mirroring the server
+    glossaryFile.ts     importing and merging a glossary file
+    hooks/              job stream, server status, resume, preview, glossary
+    styles/             design tokens and element defaults
+    components/         one panel + CSS Module each, and ui/ for what they share
+testing/
+  run_all.py            runs the suites and writes the report
+  test_*.py             the three suites: api, writer, translation
+  sample_books.py       the EPUBs they upload, built rather than committed
+  harness/              api_client, settings_override, epub_inspection, report
 ```
 
 ## Deployment target is Cloud Run
@@ -370,5 +394,5 @@ does its work *after* answering the request:
 They live on the service, not in the repo, so a new revision inherits them and nothing
 in a commit can set them.
 
-`DATA_DIR` is overridden to `/tmp/epub_translate` there — the Cloud Run filesystem is
+`DATA_DIR` is overridden to `/tmp/verso` there — the Cloud Run filesystem is
 in memory, so uploads are charged twice, once as files and once as RAM.

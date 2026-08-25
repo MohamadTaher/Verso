@@ -1,5 +1,5 @@
 services:
-  epub-translate:
+  verso:
     build: .
     ports:
       - "7860:7860"
@@ -9,7 +9,7 @@ services:
       # is for the CLI.
       - ./.env:/app/.env:ro
       # Keeps the daily spend counter across restarts.
-      - epub-data:/data
+      - verso-data:/data
 
 volumes:
-  epub-data:
+  verso-data:

@@ -18,10 +18,10 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from epub_translate import language
-from epub_translate.glossary import storage as glossary_storage
+from verso import language_detection
+from verso.glossary import storage as glossary_storage
 
-from . import budget, config, jobs
+from . import budget, jobs, settings
 
 app = FastAPI(title="EPUB Translate")
 
@@ -78,18 +78,18 @@ def get_status(request: Request):
     up front rather than after a book has been uploaded and reviewed.
     """
     return {
-        'configured': bool(config.GEMINI_API_KEY),
-        'model': config.GEMINI_MODEL,
+        'configured': bool(settings.GEMINI_API_KEY),
+        'model': settings.GEMINI_MODEL,
         'remaining_requests': budget.remaining_today(),
-        'daily_budget': config.DAILY_REQUEST_BUDGET,
-        'max_upload_mb': config.MAX_UPLOAD_MB,
+        'daily_budget': settings.DAILY_REQUEST_BUDGET,
+        'max_upload_mb': settings.MAX_UPLOAD_MB,
         'cooldown_seconds': int(budget.cooldown_remaining(_client_ip(request)).total_seconds()),
-        'busy': jobs.store.active_count() >= config.MAX_TRANSLATIONS_AT_ONCE,
+        'busy': jobs.store.active_count() >= settings.MAX_TRANSLATIONS_AT_ONCE,
         # Not a setting the UI offers, only the number it needs to estimate how
         # long a run will take.
-        'requests_per_minute': config.REQUESTS_PER_MINUTE,
-        'languages': sorted(language.LANGUAGE_CODES),
-        'detectable_languages': sorted(language.SCRIPT_RANGES),
+        'requests_per_minute': settings.REQUESTS_PER_MINUTE,
+        'languages': sorted(language_detection.LANGUAGE_CODES),
+        'detectable_languages': sorted(language_detection.SCRIPT_RANGES),
     }
 
 
@@ -101,22 +101,22 @@ async def create_job(
     target_lang: str = Form("English"),
 ):
     """Accept an EPUB and report what translating it would involve."""
-    if not config.GEMINI_API_KEY:
+    if not settings.GEMINI_API_KEY:
         raise HTTPException(status_code=503, detail="This server has no API key configured.")
 
     if not file.filename or not file.filename.lower().endswith(".epub"):
         raise HTTPException(status_code=400, detail="Please upload a .epub file.")
 
-    if jobs.store.active_count() >= config.MAX_TRANSLATIONS_AT_ONCE:
+    if jobs.store.active_count() >= settings.MAX_TRANSLATIONS_AT_ONCE:
         raise HTTPException(status_code=429, detail="The server is busy with other translations. Try again shortly.")
 
     # Read in chunks so an oversized upload is rejected before it is all in memory.
-    limit = config.MAX_UPLOAD_MB * 1024 * 1024
+    limit = settings.MAX_UPLOAD_MB * 1024 * 1024
     chunks, total = [], 0
     while chunk := await file.read(1024 * 1024):
         total += len(chunk)
         if total > limit:
-            raise HTTPException(status_code=413, detail=f"That file is over the {config.MAX_UPLOAD_MB} MB limit.")
+            raise HTTPException(status_code=413, detail=f"That file is over the {settings.MAX_UPLOAD_MB} MB limit.")
         chunks.append(chunk)
 
     job = jobs.store.create(
@@ -314,10 +314,10 @@ def put_glossary(job_id: str, body: GlossaryRequest):
 @app.exception_handler(404)
 async def spa_fallback(request: Request, exc):
     """Client-side routes fall through to the app shell; API 404s stay 404s."""
-    if request.url.path.startswith("/api/") or not config.STATIC_DIR.exists():
+    if request.url.path.startswith("/api/") or not settings.STATIC_DIR.exists():
         return JSONResponse({'detail': getattr(exc, 'detail', 'Not found')}, status_code=404)
-    return FileResponse(config.STATIC_DIR / "index.html")
+    return FileResponse(settings.STATIC_DIR / "index.html")
 
 
-if config.STATIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=config.STATIC_DIR, html=True), name="static")
+if settings.STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=settings.STATIC_DIR, html=True), name="static")

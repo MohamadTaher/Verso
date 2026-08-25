@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { GlossaryState } from '@/useGlossary';
+import type { GlossaryState } from '@/hooks/useGlossary';
 import { Button, CheckIcon, DownloadIcon, FolderIcon, PlusIcon } from './ui';
 import styles from './GlossaryEditor.module.css';
 

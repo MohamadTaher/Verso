@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { LOG_NEAR_BOTTOM_PX } from '@/constants';
-import { clockTime } from '@/format';
-import type { JobEvent } from '@/types';
+import { LOG_NEAR_BOTTOM_PX } from '@/uiConstants';
+import { clockTime } from '@/formatText';
+import type { JobEvent } from '@/apiTypes';
 import styles from './ActivityLog.module.css';
 
 /**

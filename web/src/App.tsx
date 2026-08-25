@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { cancelJob, createJob, getJob, startJob } from '@/api';
+import { cancelJob, createJob, getJob, startJob } from '@/apiClient';
 import { AppHeader } from '@/components/AppHeader';
 import { PlanPanel } from '@/components/PlanPanel';
 import { RunPanel } from '@/components/RunPanel';
 import { UploadPanel } from '@/components/UploadPanel';
 import { Callout } from '@/components/ui';
-import { TERMINAL } from '@/constants';
-import type { JobSnapshot, UploadSettings } from '@/types';
-import { useGlossary } from '@/useGlossary';
-import { useJobStream } from '@/useJobStream';
-import { usePreview } from '@/usePreview';
-import { useResumableJob } from '@/useResumableJob';
-import { useServerStatus } from '@/useServerStatus';
+import { TERMINAL } from '@/uiConstants';
+import type { JobSnapshot, UploadSettings } from '@/apiTypes';
+import { useGlossary } from '@/hooks/useGlossary';
+import { useJobStream } from '@/hooks/useJobStream';
+import { usePreview } from '@/hooks/usePreview';
+import { useResumableJob } from '@/hooks/useResumableJob';
+import { useServerStatus } from '@/hooks/useServerStatus';
 import styles from './App.module.css';
 
 const DEFAULT_SETTINGS: UploadSettings = {
@@ -223,7 +223,7 @@ export default function App() {
             🔒 The API key stays safely on the server — books are translated with Gemini, not in your browser.
             Uploads are kept temporarily and automatically deleted after one hour.
           </p>
-          <span className={styles.footerBrand}>EPUB Translate · Literary Edition</span>
+          <span className={styles.footerBrand}>Verso · EPUB translation that keeps names consistent</span>
         </div>
       </footer>
     </div>

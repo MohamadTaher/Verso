@@ -10,7 +10,7 @@ import sqlite3
 import threading
 from datetime import datetime, timedelta, timezone
 
-from . import config
+from . import settings
 
 _lock = threading.Lock()
 _connection: sqlite3.Connection = None
@@ -23,8 +23,8 @@ def _today() -> str:
 def _db() -> sqlite3.Connection:
     global _connection
     if _connection is None:
-        config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-        _connection = sqlite3.connect(config.DATA_DIR / "budget.db", check_same_thread=False)
+        settings.DATA_DIR.mkdir(parents=True, exist_ok=True)
+        _connection = sqlite3.connect(settings.DATA_DIR / "budget.db", check_same_thread=False)
         _connection.executescript("""
             CREATE TABLE IF NOT EXISTS daily_usage (
                 date TEXT PRIMARY KEY,
@@ -46,7 +46,7 @@ def requests_used_today() -> int:
 
 
 def remaining_today() -> int:
-    return max(0, config.DAILY_REQUEST_BUDGET - requests_used_today())
+    return max(0, settings.DAILY_REQUEST_BUDGET - requests_used_today())
 
 
 def record_request():
@@ -62,7 +62,7 @@ def record_request():
 
 def cooldown_remaining(ip: str) -> timedelta:
     """How long until this IP may start another job."""
-    if config.MINUTES_BETWEEN_TRANSLATIONS <= 0:
+    if settings.MINUTES_BETWEEN_TRANSLATIONS <= 0:
         return timedelta(0)
 
     with _lock:
@@ -72,7 +72,7 @@ def cooldown_remaining(ip: str) -> timedelta:
         return timedelta(0)
 
     elapsed = datetime.now(timezone.utc) - datetime.fromisoformat(row[0])
-    return max(timedelta(0), timedelta(minutes=config.MINUTES_BETWEEN_TRANSLATIONS) - elapsed)
+    return max(timedelta(0), timedelta(minutes=settings.MINUTES_BETWEEN_TRANSLATIONS) - elapsed)
 
 
 def record_run(ip: str):

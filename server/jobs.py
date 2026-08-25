@@ -19,12 +19,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from epub_translate.book import SourceBook
-from epub_translate.glossary import storage as glossary_storage
-from epub_translate.packing import pack_by_tokens
-from epub_translate.translator import EPUBTranslator, TranslationPlan
+from verso.book import SourceBook
+from verso.glossary import storage as glossary_storage
+from verso.patch_packing import pack_by_tokens
+from verso.translator import EPUBTranslator, TranslationPlan
 
-from . import budget, config
+from . import budget, settings
 
 # Extensions for the cover formats an EPUB may carry, so the file written to disk
 # keeps a name the browser can infer a type from.
@@ -200,7 +200,7 @@ class JobStore:
     def __init__(self):
         self._jobs: Dict[str, Job] = {}
         self._lock = threading.Lock()
-        self._executor = ThreadPoolExecutor(max_workers=config.MAX_TRANSLATIONS_AT_ONCE)
+        self._executor = ThreadPoolExecutor(max_workers=settings.MAX_TRANSLATIONS_AT_ONCE)
 
     def get(self, job_id: str) -> Optional[Job]:
         with self._lock:
@@ -228,7 +228,7 @@ class JobStore:
             translator = self._build_translator(job)
             job.plan = translator.prepare(
                 job.source,
-                max_tokens_per_patch=config.TOKENS_PER_REQUEST,
+                max_tokens_per_patch=settings.TOKENS_PER_REQUEST,
             )
             job.total = len(job.plan.patches)
             job.status = "ready"
@@ -255,7 +255,7 @@ class JobStore:
 
         patches = pack_by_tokens(
             [(chapter, chapter.source_tokens) for chapter in chapters],
-            config.TOKENS_PER_REQUEST,
+            settings.TOKENS_PER_REQUEST,
         )
 
         preview_plan = TranslationPlan(
@@ -288,7 +288,7 @@ class JobStore:
 
         job.plan = translator.prepare(
             job.source,
-            max_tokens_per_patch=config.TOKENS_PER_REQUEST,
+            max_tokens_per_patch=settings.TOKENS_PER_REQUEST,
             only_chapter_ids=only_chapter_ids,
         )
         job.translator = translator
@@ -330,18 +330,18 @@ class JobStore:
 
     def _build_translator(self, job: Job) -> EPUBTranslator:
         return EPUBTranslator(
-            api_key=config.GEMINI_API_KEY,
+            api_key=settings.GEMINI_API_KEY,
             source_language=job.options['source_lang'],
             target_language=job.options['target_lang'],
             glossary_file_path=str(job.glossary_path),
-            requests_per_minute=config.REQUESTS_PER_MINUTE,
-            tokens_per_minute=config.TOKENS_PER_MINUTE,
-            model_name=config.GEMINI_MODEL,
+            requests_per_minute=settings.REQUESTS_PER_MINUTE,
+            tokens_per_minute=settings.TOKENS_PER_MINUTE,
+            model_name=settings.GEMINI_MODEL,
         )
 
     def reap_expired(self):
         """Delete finished jobs past their expiry, along with their uploads."""
-        cutoff = time.time() - config.DELETE_UPLOADS_AFTER_MINUTES * 60
+        cutoff = time.time() - settings.DELETE_UPLOADS_AFTER_MINUTES * 60
         with self._lock:
             expired = [
                 job for job in self._jobs.values()
@@ -387,7 +387,7 @@ def _count_against_budget(event: Dict):
 
 
 def _ensure_scratch_dir() -> Path:
-    scratch = config.DATA_DIR / "jobs"
+    scratch = settings.DATA_DIR / "jobs"
     scratch.mkdir(parents=True, exist_ok=True)
     return scratch
 

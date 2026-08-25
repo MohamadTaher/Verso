@@ -1,0 +1,48 @@
+/* Fields */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.fieldHint {
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+  line-height: 1.45;
+}
+
+.field :global(input),
+.field :global(select) {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 var(--s4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.field :global(input):hover,
+.field :global(select):hover {
+  border-color: var(--ink-muted);
+}
+
+.field :global(input):focus,
+.field :global(select):focus {
+  border-color: var(--clay);
+  box-shadow: 0 0 0 3px var(--clay-glow);
+  outline: none;
+}

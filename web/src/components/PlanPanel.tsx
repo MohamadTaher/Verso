@@ -1,6 +1,6 @@
-import { duration, estimateSeconds, tokens as formatTokens } from '@/format';
-import type { JobStats, Status } from '@/types';
-import type { GlossaryState } from '@/useGlossary';
+import { duration, estimateSeconds, tokens as formatTokens } from '@/formatText';
+import type { JobStats, Status } from '@/apiTypes';
+import type { GlossaryState } from '@/hooks/useGlossary';
 import { BookHeader } from './BookHeader';
 import { ChapterList } from './ChapterList';
 import { GlossaryEditor } from './GlossaryEditor';

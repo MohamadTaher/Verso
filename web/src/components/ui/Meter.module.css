@@ -1,0 +1,45 @@
+/* Meter */
+
+.meter {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--paper-sunken);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+  position: relative;
+}
+
+.meterFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--clay), #d4633d);
+  box-shadow: 0 0 8px var(--clay-glow);
+  transition: width var(--dur-panel) var(--ease);
+}
+
+.meterOver .meterFill {
+  background: linear-gradient(90deg, var(--crimson), #db4242);
+  box-shadow: 0 0 8px rgba(181, 52, 52, 0.4);
+}
+
+.meterAnimated .meterFill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: meterShimmer 2s infinite ease-in-out;
+}
+
+@keyframes meterShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

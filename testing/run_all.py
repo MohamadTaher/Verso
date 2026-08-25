@@ -7,7 +7,7 @@ Run the suites.
 
 Run it inside the app container, where Python and the dependencies are:
 
-    docker compose exec -T epub-translate python /app/testing/run_all.py
+    docker compose exec -T verso python /app/testing/run_all.py
 
 Both suites retune `settings.env` as they go and put it back afterwards, so the
 whole run happens under one override of its own: every upload leaves a job that
@@ -19,7 +19,7 @@ import argparse
 import sys
 import time
 
-import fixtures
+import sample_books
 import test_api
 import test_translation
 import test_writer
@@ -53,7 +53,7 @@ def main() -> int:
           f"{status.json()['remaining_requests']} of {status.json()['daily_budget']} "
           f"requests left today")
 
-    books = fixtures.build_all()
+    books = sample_books.build_all()
     print(f"Fixtures: {', '.join(sorted(books))}")
 
     chosen = [arguments.only] if arguments.only else list(SUITES)
