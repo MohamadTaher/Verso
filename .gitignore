@@ -4,5 +4,7 @@ __pycache__/
 .venv/
 venv/
 *.epub
+# ...except the bundled sample offered on the upload screen.
+!web/public/samples/*.epub
 node_modules/
 web/dist/

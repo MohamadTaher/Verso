@@ -6,6 +6,9 @@ import type { Status, UploadSettings } from '@/apiTypes';
 import { Button, Callout, NoticeCallout, SparklesIcon } from './ui';
 import styles from './UploadPanel.module.css';
 
+const SAMPLE_PATH = 'samples/sample-book.epub';
+const SAMPLE_NAME = 'El farero de Isla Gris (sample).epub';
+
 interface Props {
   status: Status | null;
   settings: UploadSettings;
@@ -29,6 +32,7 @@ export function UploadPanel({
 }: Props) {
   const [dragging, setDragging] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sourceId = useId();
   const targetId = useId();
@@ -50,6 +54,21 @@ export function UploadPanel({
     }
     setLocalError(null);
     onFileChange(candidate);
+  }
+
+  // A short Spanish story bundled in web/public, for visitors without an EPUB to hand.
+  async function loadSample() {
+    setLoadingSample(true);
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}${SAMPLE_PATH}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      accept(new File([blob], SAMPLE_NAME, { type: 'application/epub+zip' }));
+    } catch {
+      setLocalError('The sample book could not be loaded. Please try again.');
+    } finally {
+      setLoadingSample(false);
+    }
   }
 
   const blocked = describeBlock(status);
@@ -166,6 +185,21 @@ export function UploadPanel({
               }}
             />
           </div>
+
+          {!file && !analysing && (
+            <p className={styles.sampleRow}>
+              No book handy?{' '}
+              <button
+                type="button"
+                className={styles.sampleButton}
+                onClick={loadSample}
+                disabled={loadingSample}
+              >
+                {loadingSample ? 'Loading sample…' : 'Try a short sample story'}
+              </button>{' '}
+              <span className={styles.sampleHint}>(3 chapters, Spanish)</span>
+            </p>
+          )}
 
           {shownError && (
             <Callout tone="error" title="Could not load file">
