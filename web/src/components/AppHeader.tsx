@@ -1,21 +1,21 @@
 import type { Status } from '@/apiTypes';
 import styles from './AppHeader.module.css';
 
-export function AppHeader({ status }: { status: Status | null }) {
+export function AppHeader({ status, onHome }: { status: Status | null; onHome: () => void }) {
   const budgetRatio = status && status.daily_budget > 0 ? status.remaining_requests / status.daily_budget : 1;
   const isBudgetLow = budgetRatio < 0.2;
 
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
-        <div className={styles.brand}>
-          <div className={styles.markBadge}>
+        <button type="button" className={styles.brand} onClick={onHome} title="Back to the start page">
+          <span className={styles.markBadge}>
             <span aria-hidden="true" className={styles.mark}>
               ❦
             </span>
-          </div>
+          </span>
           <span className={styles.wordmark}>Verso</span>
-        </div>
+        </button>
 
         {status && (
           <div className={styles.meta}>

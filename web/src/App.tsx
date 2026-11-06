@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cancelJob, createJob, getJob, startJob } from '@/apiClient';
 import { AppHeader } from '@/components/AppHeader';
 import { PlanPanel } from '@/components/PlanPanel';
@@ -12,6 +12,7 @@ import { useJobStream } from '@/hooks/useJobStream';
 import { usePreview } from '@/hooks/usePreview';
 import { useResumableJob } from '@/hooks/useResumableJob';
 import { useServerStatus } from '@/hooks/useServerStatus';
+import { SAMPLE_LANGUAGE, fetchSampleBook, isSampleBook } from '@/sampleBook';
 import styles from './App.module.css';
 
 const DEFAULT_SETTINGS: UploadSettings = {
@@ -24,6 +25,44 @@ export default function App() {
 
   const [settings, setSettings] = useState<UploadSettings>(DEFAULT_SETTINGS);
   const [file, setFile] = useState<File | null>(null);
+
+  // Whether the source language on screen was set for the sample rather than by
+  // the reader, so choosing their own book can put it back to auto-detect.
+  const languageFromSample = useRef(false);
+  const fileChosen = useRef(false);
+
+  const chooseFile = useCallback((next: File | null) => {
+    fileChosen.current = true;
+    setFile(next);
+    if (isSampleBook(next)) {
+      languageFromSample.current = true;
+      setSettings((current) => ({ ...current, source_lang: SAMPLE_LANGUAGE }));
+    } else if (languageFromSample.current) {
+      languageFromSample.current = false;
+      setSettings((current) => ({ ...current, source_lang: 'auto' }));
+    }
+  }, []);
+
+  const changeSettings = useCallback((next: UploadSettings) => {
+    languageFromSample.current = false;
+    setSettings(next);
+  }, []);
+
+  // Every new visitor starts with the sample selected, so trying the app takes one
+  // click. Skipped when the URL is resuming a job, and lost to any book the reader
+  // picks before it arrives.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('job')) return;
+    let cancelled = false;
+    fetchSampleBook()
+      .then((sample) => {
+        if (!cancelled && !fileChosen.current) chooseFile(sample);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [chooseFile]);
 
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [touched, setTouched] = useState(false);
@@ -132,6 +171,23 @@ export default function App() {
     refreshStatus();
   }
 
+  // The logo. Nothing is lost from the start page, so only a book in progress asks first.
+  function goHome() {
+    if (!job) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const running = job.status === 'running';
+    const question = running
+      ? 'Go back to the start page? The translation in progress will be stopped.'
+      : TERMINAL.includes(job.status)
+        ? 'Go back to the start page? You won’t be able to return to this translation, so download it first if you need it.'
+        : 'Go back to the start page? This book’s plan will be discarded.';
+    if (!window.confirm(question)) return;
+    if (running) cancelJob(job.id).catch(() => undefined);
+    startOver();
+  }
+
   const toggle = useCallback((id: string) => {
     setTouched(true);
     setSelected((current) => {
@@ -161,7 +217,7 @@ export default function App() {
 
   return (
     <div className={styles.app}>
-      <AppHeader status={status} />
+      <AppHeader status={status} onHome={goHome} />
 
       <main className={styles.main}>
         {expired && phase === 'upload' && (
@@ -177,9 +233,9 @@ export default function App() {
           <UploadPanel
             status={status}
             settings={settings}
-            onSettingsChange={setSettings}
+            onSettingsChange={changeSettings}
             file={file}
-            onFileChange={setFile}
+            onFileChange={chooseFile}
             onAnalyse={analyse}
             analysing={analysing}
             error={uploadError}

@@ -4,10 +4,8 @@ import { fileSize, languageLabel } from '@/formatText';
 import { describeBlock } from '@/noticeMessages';
 import type { Status, UploadSettings } from '@/apiTypes';
 import { Button, Callout, NoticeCallout, SparklesIcon } from './ui';
+import { fetchSampleBook, isSampleBook } from '@/sampleBook';
 import styles from './UploadPanel.module.css';
-
-const SAMPLE_PATH = 'samples/sample-book.epub';
-const SAMPLE_NAME = 'El farero de Isla Gris (sample).epub';
 
 interface Props {
   status: Status | null;
@@ -60,10 +58,7 @@ export function UploadPanel({
   async function loadSample() {
     setLoadingSample(true);
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}${SAMPLE_PATH}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const blob = await response.blob();
-      accept(new File([blob], SAMPLE_NAME, { type: 'application/epub+zip' }));
+      accept(await fetchSampleBook());
     } catch {
       setLocalError('The sample book could not be loaded. Please try again.');
     } finally {
@@ -132,7 +127,9 @@ export function UploadPanel({
                       <p className={styles.chosenName} title={file.name}>{file.name}</p>
                       <span className={styles.chosenBadge}>{fileSize(file.size)}</span>
                     </div>
-                    <span className={styles.chosenStatus}>✓ Ready to analyze</span>
+                    <span className={styles.chosenStatus}>
+                      {isSampleBook(file) ? '✓ Sample book, ready to analyze, or use your own' : '✓ Ready to analyze'}
+                    </span>
                   </div>
                 </div>
                 <div className={styles.chosenActions}>
@@ -186,9 +183,9 @@ export function UploadPanel({
             />
           </div>
 
-          {!file && !analysing && (
+          {!isSampleBook(file) && !analysing && (
             <p className={styles.sampleRow}>
-              No book handy?{' '}
+              {file ? 'Rather see it work first?' : 'No book handy?'}{' '}
               <button
                 type="button"
                 className={styles.sampleButton}
