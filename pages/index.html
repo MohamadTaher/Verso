@@ -7,18 +7,24 @@
 
 <!--
   This page exists only to forward github.io traffic to the deployed app.
-  The live URL appears three times below - refresh, canonical, link - and
-  nowhere else in the repo. Change all three.
+  The live URL appears four times below - script, refresh, canonical, link -
+  and nowhere else in the repo. Change all four.
+
+  The script forwards before anything is drawn, so visitors never see this
+  page. The meta refresh covers browsers without JavaScript; the visible
+  fallback only renders when JavaScript is off.
 -->
+<script>location.replace("https://epub-translate-276739553463.us-west1.run.app");</script>
 <meta http-equiv="refresh" content="0; url=https://epub-translate-276739553463.us-west1.run.app">
 <link rel="canonical" href="https://epub-translate-276739553463.us-west1.run.app">
 
 <style>
   :root { --paper: #faf7f2; --ink: #2b2622; --muted: #6b625a; --clay: #b4532a; }
+  html, body { background: var(--paper); }
   body {
     margin: 0; min-height: 100vh;
     display: grid; place-items: center;
-    background: var(--paper); color: var(--ink);
+    color: var(--ink);
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     text-align: center; padding: 2rem;
   }
@@ -31,10 +37,12 @@
 </style>
 </head>
 <body>
-  <main>
-    <h1>Verso</h1>
-    <p>Taking you to the live app&hellip;</p>
-    <p><a href="https://epub-translate-276739553463.us-west1.run.app">Continue &rarr;</a></p>
-  </main>
+  <noscript>
+    <main>
+      <h1>Verso</h1>
+      <p>Taking you to the live app&hellip;</p>
+      <p><a href="https://epub-translate-276739553463.us-west1.run.app">Continue &rarr;</a></p>
+    </main>
+  </noscript>
 </body>
 </html>
